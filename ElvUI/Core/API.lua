@@ -98,6 +98,12 @@ function E:GetTalentSpecInfo(isInspect)
 		end
 	end
 
+	-- If total points spent is 0, talent data may not be loaded yet. Defer the check.
+	if totalPointsSpent == 0 and not isInspect then
+		self:Delay(0.5, function() self:CheckRole() end)
+		return 0, NONE, "Interface\\Icons\\INV_Misc_QuestionMark"
+	end
+
 	if not specName then
 		specName = NONE
 	end
