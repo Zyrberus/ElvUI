@@ -47,7 +47,13 @@ function M:PLAYER_REGEN_ENABLED()
 	WorldMapBlobFrame:SetFrameLevel(frameLevel)	-- called twice to set frame level above the default limit (256)
 
 	if self.blobWasVisible then
-		WorldMapBlobFrame:Show()
+		-- don't try to show the blob while we're still locked down (combat)
+		if not InCombatLockdown() then
+			WorldMapBlobFrame:Show()
+		else
+			-- keep the flag set so it will be shown again when we actually leave combat
+			self.blobWasVisible = true
+		end
 	end
 
 	if WORLDMAP_SETTINGS.selectedQuest then
