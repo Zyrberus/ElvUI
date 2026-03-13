@@ -31,11 +31,52 @@ local function BlobFrameShow()
 	M.blobWasVisible = true
 end
 
+-- Protect the quest blob frame while in combat so the Blizzard world map code
+-- doesn't attempt to call the protected :Show() method.
+local blobOriginalShow, blobOriginalHide
+local function ProtectBlobFrameInCombat()
+	if not WorldMapBlobFrame or WorldMapBlobFrame:IsForbidden() then
+		return
+	end
+
+	if not blobOriginalShow then
+		blobOriginalShow = WorldMapBlobFrame.Show
+		blobOriginalHide = WorldMapBlobFrame.Hide
+	end
+
+	WorldMapBlobFrame.Show = BlobFrameShow
+	WorldMapBlobFrame.Hide = BlobFrameHide
+end
+
+local function RestoreBlobFrameAfterCombat()
+	if not WorldMapBlobFrame or WorldMapBlobFrame:IsForbidden() then
+		return
+	end
+
+	if blobOriginalShow then
+		WorldMapBlobFrame.Show = blobOriginalShow
+		WorldMapBlobFrame.Hide = blobOriginalHide
+		blobOriginalShow = nil
+		blobOriginalHide = nil
+	end
+
+end
+
+function M:ProtectBlobFrameInCombat()
+	ProtectBlobFrameInCombat()
+end
+
+function M:RestoreBlobFrameAfterCombat()
+	RestoreBlobFrameAfterCombat()
+end
+
 function M:PLAYER_REGEN_ENABLED()
 	WorldMapBlobFrame.SetFrameLevel = nil
 	WorldMapBlobFrame.SetScale = nil
 	WorldMapBlobFrame.Hide = nil
 	WorldMapBlobFrame.Show = nil
+
+	RestoreBlobFrameAfterCombat()
 
 	local frameLevel = WorldMapDetailFrame:GetFrameLevel() + 1
 
@@ -72,16 +113,15 @@ end
 function M:PLAYER_REGEN_DISABLED()
 	self.blobWasVisible = WorldMapFrame:IsShown() and WorldMapBlobFrame:IsShown()
 
-	WorldMapBlobFrame:SetParent(nil)
-	WorldMapBlobFrame:ClearAllPoints()
-	WorldMapBlobFrame:SetPoint("TOP", UIParent, "BOTTOM")
-	WorldMapBlobFrame:Hide()
-	WorldMapBlobFrame.Hide = BlobFrameHide
-	WorldMapBlobFrame.Show = BlobFrameShow
-	WorldMapBlobFrame.SetFrameLevel = E.noop
-	WorldMapBlobFrame.SetScale = E.noop
+	ProtectBlobFrameInCombat()
 
-	self.blobNewScale = nil
+	if E.global.general.smallerWorldMap or (E.private.skins.blizzard.enable and E.private.skins.blizzard.worldmap) then
+		WorldMapBlobFrame:SetParent(nil)
+		WorldMapBlobFrame:ClearAllPoints()
+		WorldMapBlobFrame:SetPoint("TOP", UIParent, "BOTTOM")
+		WorldMapBlobFrame:Hide()
+		self.blobNewScale = nil
+	end
 end
 
 local t = 0
@@ -210,9 +250,12 @@ function M:Initialize()
 		self:PositionCoords()
 	end
 
-	if E.global.general.smallerWorldMap or (E.private.skins.blizzard.enable and E.private.skins.blizzard.worldmap) then
-		self:RegisterEvent("PLAYER_REGEN_ENABLED")
-		self:RegisterEvent("PLAYER_REGEN_DISABLED")
+	-- Always register combat state handlers to prevent protected function calls on the quest blob frame.
+	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+
+	if InCombatLockdown() then
+		ProtectBlobFrameInCombat()
 	end
 
 	WorldMapFrame:EnableMouse(false)
