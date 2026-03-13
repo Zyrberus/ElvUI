@@ -35,7 +35,7 @@ end
 -- doesn't attempt to call the protected :Show() method.
 local blobOriginalShow, blobOriginalHide
 local function ProtectBlobFrameInCombat()
-	if not WorldMapBlobFrame or WorldMapBlobFrame:IsForbidden() then
+	if not WorldMapBlobFrame or (WorldMapBlobFrame.IsForbidden and WorldMapBlobFrame:IsForbidden()) then
 		return
 	end
 
@@ -49,7 +49,7 @@ local function ProtectBlobFrameInCombat()
 end
 
 local function RestoreBlobFrameAfterCombat()
-	if not WorldMapBlobFrame or WorldMapBlobFrame:IsForbidden() then
+	if not WorldMapBlobFrame or (WorldMapBlobFrame.IsForbidden and WorldMapBlobFrame:IsForbidden()) then
 		return
 	end
 
