@@ -70,26 +70,40 @@ end
 
 function E:GetPlayerRole()
 	local isTank, isHealer, isDamage = UnitGroupRolesAssigned("player")
+	local role
 
 	if isTank or isHealer or isDamage then
-		return isTank and "TANK" or isHealer and "HEALER" or isDamage and "DAMAGER"
+		role = isTank and "TANK" or isHealer and "HEALER" or isDamage and "DAMAGER"
 	else
 		if self.HealingClasses[self.myclass] ~= nil and self:CheckTalentTree(self.HealingClasses[E.myclass]) then
-			return "HEALER"
+			role = "HEALER"
 		elseif E.Role == "Tank" then
-			return "TANK"
+			role = "TANK"
 		else
-			return "DAMAGER"
+			role = "DAMAGER"
 		end
 	end
+	return role
 end
 
 function E:GetTalentSpecInfo(isInspect)
 	local talantGroup = GetActiveTalentGroup(isInspect)
-	local maxPoints, specIdx, specName, specIcon = 0, 0
+	local totalPointsSpent, maxPoints, specIdx, specName, specIcon = 0, 0, 0, nil, nil
 
 	for i = 1, MAX_TALENT_TABS do
-		local name, icon, pointsSpent = GetTalentTabInfo(i, isInspect, nil, talantGroup)
+		local name, icon, pointsSpent
+		if GetTalentTabInfo then
+			local ok
+			ok, name, icon, pointsSpent = pcall(GetTalentTabInfo, i, isInspect, nil, talantGroup)
+			if not ok then
+				-- GetTalentTabInfo may not be available yet (joining instance, loading talent data)
+				pointsSpent = 0
+			end
+		end
+
+		pointsSpent = pointsSpent or 0
+		totalPointsSpent = totalPointsSpent + pointsSpent
+
 		if maxPoints < pointsSpent then
 			maxPoints = pointsSpent
 			specIdx = i
